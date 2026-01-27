@@ -1,0 +1,37 @@
+{
+  "name": "bin-home",
+  "version": "0.1.0",
+  "description": "Find which global npm package provides a CLI command",
+  "author": "bin-home",
+  "license": "MIT",
+  "bin": {
+    "bin-home": "bin/cli.js"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourname/bin-home.git"
+  },
+  "keywords": [
+    "cli",
+    "npm",
+    "bin",
+    "package",
+    "finder"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md"
+  ],
+  "dependencies": {
+    "open": "^9.1.0",
+    "which": "^4.0.0"
+  }
+}
