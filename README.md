@@ -16,6 +16,41 @@ npm install -g bin-home
 bin-home <command> [--open]
 ```
 
+### Version & Update
+
+```bash
+# 显示自身版本与线上版本
+bin-home --version
+
+# 显示指定命令对应包的版本信息
+bin-home codex --version
+
+# 进入更新流程（默认 latest）
+bin-home --update
+```
+
+示例输出：
+
+```
+当前版本: 0.1.0
+线上版本: 0.1.0
+请输入要更新的版本 (默认 latest):
+```
+
+指定命令的更新示例：
+
+```bash
+bin-home codex --update
+```
+
+示例输出：
+
+```
+当前版本: 0.72.0
+线上版本: 0.92.0-alpha.9,0.92.0-alpha.8,0.92.0-alpha.7,0.92.0-alpha.5,0.92.0-alpha.4,0.92.0-alpha.3
+请输入要更新的版本 (默认 latest):
+```
+
 ### Examples
 
 ```bash

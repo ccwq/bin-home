@@ -3,6 +3,12 @@ const path = require("path");
 const validateCommand = require("../lib/commandValidator");
 const findPackageForCommand = require("../lib/packageFinder");
 const displayPackageInfo = require("../lib/packageInfoFormatter");
+const {
+  fetchOnlineVersions,
+  formatVersionOutput,
+  promptForVersion,
+  runGlobalUpdate
+} = require("../lib/versionUpdate");
 
 const COMMAND_NOT_FOUND_EXIT_CODE = 1;
 const PACKAGE_NOT_FOUND_EXIT_CODE = 2;
@@ -13,12 +19,8 @@ function printHelp() {
   console.log("Options:");
   console.log("  --help, -h     Show help");
   console.log("  --version, -v  Show version");
+  console.log("  --update, -u   Update to specified version");
   console.log("  --open, -o     Open npm package page in browser");
-}
-
-function printVersion() {
-  const packageJson = require(path.join(__dirname, "..", "package.json"));
-  console.log(packageJson.version);
 }
 
 function parseArgs(argv) {
@@ -37,15 +39,58 @@ function parseArgs(argv) {
     commandName,
     help: flags.has("--help") || flags.has("-h"),
     version: flags.has("--version") || flags.has("-v"),
+    update: flags.has("--update") || flags.has("-u"),
     open: flags.has("--open") || flags.has("-o")
   };
 }
 
-async function run() {
-  const { commandName, help, version, open } = parseArgs(process.argv.slice(2));
+async function resolvePackageInfo(commandName) {
+  if (!commandName) {
+    const packageJson = require(path.join(__dirname, "..", "package.json"));
+    return { packageName: packageJson.name, localVersion: packageJson.version };
+  }
 
-  if (version) {
-    printVersion();
+  const commandExists = await validateCommand(commandName);
+  if (!commandExists) {
+    const error = new Error(`Command '${commandName}' not found in system PATH`);
+    error.exitCode = COMMAND_NOT_FOUND_EXIT_CODE;
+    throw error;
+  }
+
+  const packageInfo = await findPackageForCommand(commandName);
+  if (!packageInfo) {
+    const error = new Error(
+      `No npm package found for command '${commandName}'. It may not be installed via npm.`
+    );
+    error.exitCode = PACKAGE_NOT_FOUND_EXIT_CODE;
+    throw error;
+  }
+
+  const packageName = packageInfo.packageJson.name || packageInfo.packageName;
+  return {
+    packageName,
+    localVersion: packageInfo.packageJson.version
+  };
+}
+
+async function showVersionInfo(commandName) {
+  const { packageName, localVersion } = await resolvePackageInfo(commandName);
+  const onlineVersions = await fetchOnlineVersions(packageName, { limit: 6 });
+  console.log(formatVersionOutput(localVersion, onlineVersions));
+  return packageName;
+}
+
+async function run() {
+  const { commandName, help, version, update, open } = parseArgs(
+    process.argv.slice(2)
+  );
+
+  if (version || update) {
+    const packageName = await showVersionInfo(commandName);
+    if (update) {
+      const targetVersion = await promptForVersion();
+      await runGlobalUpdate(packageName, targetVersion);
+    }
     return;
   }
 

@@ -6,22 +6,34 @@ const { execFile } = require("node:child_process");
 const cliPath = path.join(__dirname, "..", "bin", "cli.js");
 const packageJson = require("../package.json");
 
-function runCli(args) {
+function runCli(args, options = {}) {
   return new Promise((resolve, reject) => {
-    execFile(process.execPath, [cliPath, ...args], (error, stdout, stderr) => {
-      if (error) {
-        error.stdout = stdout;
-        error.stderr = stderr;
-        return reject(error);
+    const env = { ...process.env, ...(options.env || {}) };
+    execFile(
+      process.execPath,
+      [cliPath, ...args],
+      { env },
+      (error, stdout, stderr) => {
+        if (error) {
+          error.stdout = stdout;
+          error.stderr = stderr;
+          return reject(error);
+        }
+        resolve({ stdout, stderr });
       }
-      resolve({ stdout, stderr });
-    });
+    );
   });
 }
 
-test("cli prints version", async () => {
-  const { stdout } = await runCli(["--version"]);
-  assert.equal(stdout.trim(), packageJson.version);
+test("cli prints version info", async () => {
+  const { stdout } = await runCli(["--version"], {
+    env: {
+      BIN_HOME_TEST_VERSIONS: JSON.stringify(["1.0.0", "2.0.0", "3.0.0"])
+    }
+  });
+  const lines = stdout.trim().split(/\r?\n/);
+  assert.equal(lines[0], `当前版本: ${packageJson.version}`);
+  assert.equal(lines[1], "线上版本: 3.0.0,2.0.0,1.0.0");
 });
 
 test("cli prints help", async () => {
