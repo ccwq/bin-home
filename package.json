@@ -2,7 +2,7 @@
   "name": "bin-home",
   "version": "0.1.1",
   "description": "Find which global npm package provides a CLI command",
-  "author": "bin-home",
+  "author": "ccwq",
   "license": "MIT",
   "bin": {
     "bin-home": "bin/cli.js",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourname/bin-home.git"
+    "url": "https://github.com/ccwq/bin-home.git"
   },
   "keywords": [
     "cli",
