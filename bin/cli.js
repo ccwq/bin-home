@@ -7,28 +7,57 @@ const {
   fetchOnlineVersions,
   formatVersionOutput,
   chooseTargetVersion,
-  runGlobalUpdate
+  runGlobalUpdate,
+  isInteractiveSession
 } = require("../lib/versionUpdate");
 
 const COMMAND_NOT_FOUND_EXIT_CODE = 1;
 const PACKAGE_NOT_FOUND_EXIT_CODE = 2;
 
-function printHelp() {
-  console.log("Usage: bin-home <command> [--open]");
-  console.log("");
-  console.log("Options:");
-  console.log("  --help, -h     Show help");
-  console.log("  --version, -v  Show version");
-  console.log("  --update, -u   Update to specified version (keyboard select)");
-  console.log("  --open, -o     Open npm package page in browser");
+async function printHelp() {
+  const helpText = [
+    "Usage: bin-home <command> [--open] [-l <n>]",
+    "",
+    "Options:",
+    "  --help, -h                Show help",
+    "  --version, -v             Show version",
+    "  --update, -u              Update to specified version (keyboard select)",
+    "  --open, -o                Open npm package page in browser",
+    "  -l, --version-length <n>  Limit online version list length (default: 6)",
+    "",
+    "Example:",
+    "  bin-home codex --open",
+    "  bin-home codex -v -l 10"
+  ].join("\n");
+
+  if (isInteractiveSession()) {
+    const { select } = await import("@inquirer/prompts");
+    await select({
+      message: "bin-home 帮助信息:",
+      choices: [
+        { name: "查看详细说明", value: "details", description: helpText },
+        { name: "退出", value: "exit" }
+      ]
+    });
+  } else {
+    console.log(helpText);
+  }
 }
 
 function parseArgs(argv) {
   const flags = new Set();
   let commandName = null;
+  let versionLength = 6;
 
-  for (const arg of argv) {
-    if (arg.startsWith("-")) {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--version-length" || arg === "-l") {
+      const nextArg = argv[i + 1];
+      if (nextArg && !nextArg.startsWith("-")) {
+        versionLength = parseInt(nextArg, 10) || 6;
+        i++;
+      }
+    } else if (arg.startsWith("-")) {
       flags.add(arg);
     } else if (!commandName) {
       commandName = arg;
@@ -40,7 +69,8 @@ function parseArgs(argv) {
     help: flags.has("--help") || flags.has("-h"),
     version: flags.has("--version") || flags.has("-v"),
     update: flags.has("--update") || flags.has("-u"),
-    open: flags.has("--open") || flags.has("-o")
+    open: flags.has("--open") || flags.has("-o"),
+    versionLength
   };
 }
 
@@ -73,27 +103,30 @@ async function resolvePackageInfo(commandName) {
   };
 }
 
-async function showVersionInfo(commandName) {
+async function showVersionInfo(commandName, options = {}) {
   const { packageName, localVersion } = await resolvePackageInfo(commandName);
   const onlineVersions = await fetchOnlineVersions(packageName, {
-    limit: 6,
+    limit: options.versionLength || 6,
     onLoading: () => {
       console.log("正在获取线上版本...");
     }
   });
-  console.log(formatVersionOutput(localVersion, onlineVersions));
+  console.log(formatVersionOutput(packageName, localVersion, onlineVersions, options.showOnline));
   return { packageName, onlineVersions };
 }
 
 async function run() {
-  const { commandName, help, version, update, open } = parseArgs(
+  const { commandName, help, version, update, open, versionLength } = parseArgs(
     process.argv.slice(2)
   );
 
   if (version || update) {
-    const { packageName, onlineVersions } = await showVersionInfo(commandName);
+    const { packageName, onlineVersions } = await showVersionInfo(commandName, {
+      versionLength,
+      showOnline: !update
+    });
     if (update) {
-      const targetVersion = await chooseTargetVersion(onlineVersions);
+      const targetVersion = await chooseTargetVersion(packageName, onlineVersions);
       if (!targetVersion) {
         console.log("已取消更新");
         return;
@@ -114,7 +147,7 @@ async function run() {
   }
 
   if (help || !commandName) {
-    printHelp();
+    await printHelp();
     return;
   }
 

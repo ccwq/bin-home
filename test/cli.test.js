@@ -52,8 +52,18 @@ test("cli prints version info", async () => {
     }
   });
   const lines = stdout.trim().split(/\r?\n/);
-  assert.equal(lines[0], `当前版本: ${packageJson.version}`);
+  assert.equal(lines[0], `当前版本: bin-home@${packageJson.version}`);
   assert.equal(lines[1], "线上版本: 3.0.0,2.0.0,1.0.0");
+});
+
+test("cli limits online versions with -l", async () => {
+  const { stdout } = await runCli(["--version", "-l", "2"], {
+    env: {
+      BIN_HOME_TEST_VERSIONS: JSON.stringify(["1.0.0", "2.0.0", "3.0.0"])
+    }
+  });
+  const lines = stdout.trim().split(/\r?\n/);
+  assert.equal(lines[1], "线上版本: 3.0.0,2.0.0");
 });
 
 test("cli prints help", async () => {

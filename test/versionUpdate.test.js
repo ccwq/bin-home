@@ -45,9 +45,14 @@ test("fetchOnlineVersions returns newest 6 versions", async () => {
   ]);
 });
 
-test("formatVersionOutput returns two-line output", () => {
-  const output = formatVersionOutput("1.2.3", ["2.0.0", "1.9.0"]);
-  assert.equal(output, "当前版本: 1.2.3\n线上版本: 2.0.0,1.9.0");
+test("formatVersionOutput returns output with package name", () => {
+  const output = formatVersionOutput("@demo/pkg", "1.2.3", ["2.0.0", "1.9.0"]);
+  assert.equal(output, "当前版本: @demo/pkg@1.2.3\n线上版本: 2.0.0,1.9.0");
+});
+
+test("formatVersionOutput can hide online versions", () => {
+  const output = formatVersionOutput("@demo/pkg", "1.2.3", ["2.0.0", "1.9.0"], false);
+  assert.equal(output, "当前版本: @demo/pkg@1.2.3");
 });
 
 test("runGlobalUpdate uses npm command with package and version", async () => {
@@ -84,7 +89,7 @@ test("chooseTargetVersion falls back to prompt in non-interactive session", asyn
   input.isTTY = false;
   output.isTTY = false;
 
-  const choicePromise = chooseTargetVersion(["1.0.0"], {
+  const choicePromise = chooseTargetVersion("@demo/pkg", ["1.0.0"], {
     input,
     output,
     defaultVersion: "latest",
