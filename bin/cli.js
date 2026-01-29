@@ -6,7 +6,7 @@ const displayPackageInfo = require("../lib/packageInfoFormatter");
 const {
   fetchOnlineVersions,
   formatVersionOutput,
-  promptForVersion,
+  chooseTargetVersion,
   runGlobalUpdate
 } = require("../lib/versionUpdate");
 
@@ -19,7 +19,7 @@ function printHelp() {
   console.log("Options:");
   console.log("  --help, -h     Show help");
   console.log("  --version, -v  Show version");
-  console.log("  --update, -u   Update to specified version");
+  console.log("  --update, -u   Update to specified version (keyboard select)");
   console.log("  --open, -o     Open npm package page in browser");
 }
 
@@ -75,9 +75,14 @@ async function resolvePackageInfo(commandName) {
 
 async function showVersionInfo(commandName) {
   const { packageName, localVersion } = await resolvePackageInfo(commandName);
-  const onlineVersions = await fetchOnlineVersions(packageName, { limit: 6 });
+  const onlineVersions = await fetchOnlineVersions(packageName, {
+    limit: 6,
+    onLoading: () => {
+      console.log("正在获取线上版本...");
+    }
+  });
   console.log(formatVersionOutput(localVersion, onlineVersions));
-  return packageName;
+  return { packageName, onlineVersions };
 }
 
 async function run() {
@@ -86,10 +91,24 @@ async function run() {
   );
 
   if (version || update) {
-    const packageName = await showVersionInfo(commandName);
+    const { packageName, onlineVersions } = await showVersionInfo(commandName);
     if (update) {
-      const targetVersion = await promptForVersion();
-      await runGlobalUpdate(packageName, targetVersion);
+      const targetVersion = await chooseTargetVersion(onlineVersions);
+      if (!targetVersion) {
+        console.log("已取消更新");
+        return;
+      }
+      try {
+        console.log("正在更新...");
+        await runGlobalUpdate(packageName, targetVersion);
+        console.log("更新完成");
+      } catch (error) {
+        console.error("更新失败");
+        if (typeof error.exitCode === "number") {
+          process.exit(error.exitCode);
+        }
+        throw error;
+      }
     }
     return;
   }

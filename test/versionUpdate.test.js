@@ -4,8 +4,10 @@ const assert = require("node:assert/strict");
 const {
   fetchOnlineVersions,
   formatVersionOutput,
+  chooseTargetVersion,
   runGlobalUpdate
 } = require("../lib/versionUpdate");
+const { PassThrough } = require("node:stream");
 
 function createExecStub({ stdout = "", error = null, onCommand } = {}) {
   return (command, options, callback) => {
@@ -58,4 +60,38 @@ test("runGlobalUpdate uses npm command with package and version", async () => {
 
   await runGlobalUpdate("@demo/pkg", "1.2.3", { execFn });
   assert.match(captured, /npm(.cmd)? i -g @demo\/pkg@1.2.3/);
+});
+
+test("fetchOnlineVersions triggers loading callback when fetching npm", async () => {
+  let loadingCalls = 0;
+  const execFn = createExecStub({
+    stdout: JSON.stringify(["1.0.0"])
+  });
+
+  await fetchOnlineVersions("@demo/pkg", {
+    execFn,
+    onLoading: () => {
+      loadingCalls += 1;
+    }
+  });
+
+  assert.equal(loadingCalls, 1);
+});
+
+test("chooseTargetVersion falls back to prompt in non-interactive session", async () => {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  input.isTTY = false;
+  output.isTTY = false;
+
+  const choicePromise = chooseTargetVersion(["1.0.0"], {
+    input,
+    output,
+    defaultVersion: "latest",
+    interactive: false
+  });
+
+  input.write("\n");
+  const choice = await choicePromise;
+  assert.equal(choice, "latest");
 });
