@@ -3,6 +3,7 @@ const path = require("path");
 const validateCommand = require("../lib/commandValidator");
 const findPackageForCommand = require("../lib/packageFinder");
 const displayPackageInfo = require("../lib/packageInfoFormatter");
+const { t } = require("../lib/i18n");
 const {
   fetchOnlineVersions,
   formatVersionOutput,
@@ -16,16 +17,16 @@ const PACKAGE_NOT_FOUND_EXIT_CODE = 2;
 
 async function printHelp() {
   const helpText = [
-    "Usage: bin-home <command> [--open] [-l <n>]",
+    `${t("usage")}: bin-home <command> [--open] [-l <n>]`,
     "",
-    "Options:",
-    "  --help, -h                Show help",
-    "  --version, -v             Show version",
-    "  --update, -u              Update to specified version (keyboard select)",
-    "  --open, -o                Open npm package page in browser",
-    "  -l, --version-length <n>  Limit online version list length (default: 6)",
+    `${t("options")}:`,
+    `  --help, -h                ${t("help")}`,
+    `  --version, -v             ${t("version")}`,
+    `  --update, -u              ${t("update")}`,
+    `  --open, -o                ${t("open")}`,
+    `  -l, --version-length <n>  ${t("versionLength")}`,
     "",
-    "Example:",
+    `${t("example")}:`,
     "  bin-home codex --open",
     "  bin-home codex -v -l 10"
   ].join("\n");
@@ -33,10 +34,10 @@ async function printHelp() {
   if (isInteractiveSession()) {
     const { select } = await import("@inquirer/prompts");
     await select({
-      message: "bin-home 帮助信息:",
+      message: `bin-home ${t("helpMessage")}`,
       choices: [
-        { name: "查看详细说明", value: "details", description: helpText },
-        { name: "退出", value: "exit" }
+        { name: t("viewDetails"), value: "details", description: helpText },
+        { name: t("exit"), value: "exit" }
       ]
     });
   } else {
@@ -82,16 +83,14 @@ async function resolvePackageInfo(commandName) {
 
   const commandExists = await validateCommand(commandName);
   if (!commandExists) {
-    const error = new Error(`Command '${commandName}' not found in system PATH`);
+    const error = new Error(t("commandNotFound", commandName));
     error.exitCode = COMMAND_NOT_FOUND_EXIT_CODE;
     throw error;
   }
 
   const packageInfo = await findPackageForCommand(commandName);
   if (!packageInfo) {
-    const error = new Error(
-      `No npm package found for command '${commandName}'. It may not be installed via npm.`
-    );
+    const error = new Error(t("packageNotFound", commandName));
     error.exitCode = PACKAGE_NOT_FOUND_EXIT_CODE;
     throw error;
   }
@@ -108,7 +107,7 @@ async function showVersionInfo(commandName, options = {}) {
   const onlineVersions = await fetchOnlineVersions(packageName, {
     limit: options.versionLength || 6,
     onLoading: () => {
-      console.log("正在获取线上版本...");
+      console.log(t("loadingOnline"));
     }
   });
   console.log(formatVersionOutput(packageName, localVersion, onlineVersions, options.showOnline));
@@ -128,15 +127,15 @@ async function run() {
     if (update) {
       const targetVersion = await chooseTargetVersion(packageName, onlineVersions);
       if (!targetVersion) {
-        console.log("已取消更新");
+        console.log(t("updateCanceled"));
         return;
       }
       try {
-        console.log("正在更新...");
+        console.log(t("updating"));
         await runGlobalUpdate(packageName, targetVersion);
-        console.log("更新完成");
+        console.log(t("updateCompleted"));
       } catch (error) {
-        console.error("更新失败");
+        console.error(t("updateFailed"));
         if (typeof error.exitCode === "number") {
           process.exit(error.exitCode);
         }

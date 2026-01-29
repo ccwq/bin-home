@@ -1,5 +1,7 @@
 # bin-home
 
+[查看中文](#bin-home中文)
+
 bin-home is a CLI tool that finds which global npm package provides a given
 command. It helps when you know the command name (for example, `codex`) but not
 the package you need to install or manage (for example, `@openai/codex`).
@@ -19,45 +21,47 @@ bin-home <command> [--open]
 ### Version & Update
 
 ```bash
-# 显示自身版本与线上版本
+# Show self version and online versions
 bin-home --version
 
-# 显示指定命令对应包的版本信息
+# Show package version info for a specific command
 bin-home codex --version
 
-# 进入更新流程（默认 latest）
+# Start update process (defaults to latest)
 bin-home --update
 
-# 使用 binu 进行快捷更新
+# Limit the number of online versions shown (default: 6)
+bin-home codex --version -l 10
+
+# Quick update using binu
 binu codex
 ```
 
-示例输出：
+Example output:
 
 ```
-当前版本: 0.1.0
-线上版本: 0.1.0
-请输入要更新的版本 (默认 latest):
+Current version: bin-home@0.2.0
+Online version: 0.2.0,0.1.0
 ```
 
-指定命令的更新示例：
-
-```bash
-bin-home codex --update
-```
-
-binu 的等价写法：
+Update process example (no extra "Online version" line):
 
 ```bash
 binu codex
 ```
 
-示例输出：
+Example output:
 
 ```
-当前版本: 0.72.0
-线上版本: 0.92.0-alpha.9,0.92.0-alpha.8,0.92.0-alpha.7,0.92.0-alpha.5,0.92.0-alpha.4,0.92.0-alpha.3
-请输入要更新的版本 (默认 latest):
+Current version: @openai/codex@0.72.0
+? Select version to update (Arrow keys to select, Enter to confirm, Esc to cancel): (Use arrow keys)
+> latest
+  @openai/codex@0.92.0-alpha.9
+  @openai/codex@0.92.0-alpha.8
+  @openai/codex@0.92.0-alpha.7
+  @openai/codex@0.92.0-alpha.5
+  @openai/codex@0.92.0-alpha.4
+  @openai/codex@0.92.0-alpha.3
 ```
 
 ### Examples
@@ -82,9 +86,11 @@ bin-home codex --open
 
 ### Options
 
-- `--help`, `-h`: Show help
+- `--help`, `-h`: Show help (Interactive menu)
 - `--version`, `-v`: Show version
 - `--open`, `-o`: Open npm package page in browser
+- `--update`, `-u`: Update to specified version
+- `-l, --version-length <n>`: Limit online version list length (default: 6)
 
 ## Publishing
 
@@ -97,6 +103,8 @@ To publish to npm and GitHub:
 ---
 
 # bin-home（中文）
+
+[View English](#bin-home)
 
 bin-home 是一个 CLI 工具，用于查找某个命令来自哪个全局 npm 包。它解决了
 “知道命令名但不知道包名”的痛点，比如命令是 `codex`，但包名是
@@ -140,11 +148,27 @@ bin-home codex --open
 binu codex
 ```
 
+示例输出：
+
+```
+当前版本: @openai/codex@0.72.0
+? 请选择要更新的版本（上下方向键选择，回车确认，Esc 取消）： (Use arrow keys)
+> latest
+  @openai/codex@0.92.0-alpha.9
+  @openai/codex@0.92.0-alpha.8
+  @openai/codex@0.92.0-alpha.7
+  @openai/codex@0.92.0-alpha.5
+  @openai/codex@0.92.0-alpha.4
+  @openai/codex@0.92.0-alpha.3
+```
+
 ### 选项
 
-- `--help`, `-h`: 显示帮助
+- `--help`, `-h`: 显示帮助 (交互式菜单)
 - `--version`, `-v`: 显示版本号
 - `--open`, `-o`: 打开 npm 包页面
+- `--update`, `-u`: 更新到指定版本
+- `-l, --version-length <n>`: 限制显示的线上版本数量 (默认: 6)
 
 ## 发布说明
 

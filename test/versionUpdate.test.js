@@ -7,6 +7,7 @@ const {
   chooseTargetVersion,
   runGlobalUpdate
 } = require("../lib/versionUpdate");
+const { t } = require("../lib/i18n");
 const { PassThrough } = require("node:stream");
 
 function createExecStub({ stdout = "", error = null, onCommand } = {}) {
@@ -47,12 +48,12 @@ test("fetchOnlineVersions returns newest 6 versions", async () => {
 
 test("formatVersionOutput returns output with package name", () => {
   const output = formatVersionOutput("@demo/pkg", "1.2.3", ["2.0.0", "1.9.0"]);
-  assert.equal(output, "当前版本: @demo/pkg@1.2.3\n线上版本: 2.0.0,1.9.0");
+  assert.equal(output, `${t("currentVersion")}: @demo/pkg@1.2.3\n${t("onlineVersion")}: 2.0.0,1.9.0`);
 });
 
 test("formatVersionOutput can hide online versions", () => {
   const output = formatVersionOutput("@demo/pkg", "1.2.3", ["2.0.0", "1.9.0"], false);
-  assert.equal(output, "当前版本: @demo/pkg@1.2.3");
+  assert.equal(output, `${t("currentVersion")}: @demo/pkg@1.2.3`);
 });
 
 test("runGlobalUpdate uses npm command with package and version", async () => {

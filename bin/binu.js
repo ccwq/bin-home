@@ -2,26 +2,27 @@
 const path = require("path");
 
 const { isInteractiveSession } = require("../lib/versionUpdate");
+const { t } = require("../lib/i18n");
 
 async function printBinuHelp() {
   const helpText = [
-    "Usage: binu <command> [-l <n>]",
+    `${t("binuUsage")}: binu <command> [-l <n>]`,
     "",
-    "说明: binu 是 bin-home <command> --update 的缩写。",
-    "功能: 显示版本信息并进入更新流程。",
-    "用法: binu <command> [-l <n>]",
-    "选项:",
-    "  -l, --version-length <n>  限制显示的线上版本数量 (默认: 6)",
-    "示例: binu codex -l 10"
+    t("binuDesc"),
+    t("binuFunc"),
+    `${t("binuUsage")}: binu <command> [-l <n>]`,
+    `${t("options")}:`,
+    `  -l, --version-length <n>  ${t("versionLength")}`,
+    `${t("example")}: binu codex -l 10`
   ].join("\n");
 
   if (isInteractiveSession()) {
     const { select } = await import("@inquirer/prompts");
     await select({
-      message: "binu 帮助信息:",
+      message: `binu ${t("helpMessage")}`,
       choices: [
-        { name: "查看详细说明", value: "details", description: helpText },
-        { name: "退出", value: "exit" }
+        { name: t("viewDetails"), value: "details", description: helpText },
+        { name: t("exit"), value: "exit" }
       ]
     });
   } else {

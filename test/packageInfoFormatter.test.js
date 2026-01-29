@@ -53,20 +53,20 @@ test("displayPackageInfo reports missing repo as unavailable", async () => {
   assert.equal(logs[2], "github: unavailable");
 });
 
-test("displayPackageInfo reports open errors", async () => {
-  const packageInfo = {
-    packageName: "example",
-    packagePath: "/tmp",
-    packageJson: {}
-  };
+const { t } = require("../lib/i18n");
 
-  const openStub = async () => {
+test("displayPackageInfo reports open errors", async (tContext) => {
+  const consoleError = tContext.mock.method(console, "error", () => {});
+  const packageInfo = {
+    packageName: "foo",
+    packageJson: { repository: "foo/bar" }
+  };
+  const openImpl = () => {
     throw new Error("boom");
   };
 
-  const { errors } = await captureConsole(() =>
-    displayPackageInfo("example", packageInfo, true, openStub)
-  );
-
-  assert.equal(errors[0], "Failed to open URL in browser: boom");
+  await displayPackageInfo("foo", packageInfo, true, openImpl);
+  
+  assert.equal(consoleError.mock.calls.length, 1);
+  assert.equal(consoleError.mock.calls[0].arguments[0], t("openError", "boom"));
 });
