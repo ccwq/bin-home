@@ -5,7 +5,8 @@
   "author": "bin-home",
   "license": "MIT",
   "bin": {
-    "bin-home": "bin/cli.js"
+    "bin-home": "bin/cli.js",
+    "binu": "bin/binu.js"
   },
   "main": "lib/index.js",
   "scripts": {

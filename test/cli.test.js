@@ -4,6 +4,7 @@ const path = require("node:path");
 const { execFile } = require("node:child_process");
 
 const cliPath = path.join(__dirname, "..", "bin", "cli.js");
+const binuPath = path.join(__dirname, "..", "bin", "binu.js");
 const packageJson = require("../package.json");
 
 function runCli(args, options = {}) {
@@ -12,6 +13,25 @@ function runCli(args, options = {}) {
     execFile(
       process.execPath,
       [cliPath, ...args],
+      { env },
+      (error, stdout, stderr) => {
+        if (error) {
+          error.stdout = stdout;
+          error.stderr = stderr;
+          return reject(error);
+        }
+        resolve({ stdout, stderr });
+      }
+    );
+  });
+}
+
+function runBinu(args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const env = { ...process.env, ...(options.env || {}) };
+    execFile(
+      process.execPath,
+      [binuPath, ...args],
       { env },
       (error, stdout, stderr) => {
         if (error) {
@@ -44,4 +64,16 @@ test("cli prints help", async () => {
 test("cli prints help when no args", async () => {
   const { stdout } = await runCli([]);
   assert.match(stdout, /Usage: bin-home/);
+});
+
+test("binu prints help when no args", async () => {
+  const { stdout } = await runBinu([]);
+  assert.match(stdout, /Usage: binu/);
+  assert.match(stdout, /bin-home <command> --update/);
+});
+
+test("binu prints help with -h", async () => {
+  const { stdout } = await runBinu(["-h"]);
+  assert.match(stdout, /Usage: binu/);
+  assert.match(stdout, /bin-home <command> --update/);
 });

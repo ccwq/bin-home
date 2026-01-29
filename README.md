@@ -27,6 +27,9 @@ bin-home codex --version
 
 # 进入更新流程（默认 latest）
 bin-home --update
+
+# 使用 binu 进行快捷更新
+binu codex
 ```
 
 示例输出：
@@ -41,6 +44,12 @@ bin-home --update
 
 ```bash
 bin-home codex --update
+```
+
+binu 的等价写法：
+
+```bash
+binu codex
 ```
 
 示例输出：
@@ -123,6 +132,12 @@ github: https://github.com/openai/codex
 
 ```bash
 bin-home codex --open
+```
+
+快速进入更新流程（`bin-home <命令> --update` 的缩写）：
+
+```bash
+binu codex
 ```
 
 ### 选项
