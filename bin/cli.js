@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const path = require("path");
+const which = require("which");
 const validateCommand = require("../lib/commandValidator");
 const findPackageForCommand = require("../lib/packageFinder");
 const displayPackageInfo = require("../lib/packageInfoFormatter");
@@ -9,8 +10,11 @@ const {
   formatVersionOutput,
   chooseTargetVersion,
   runGlobalUpdate,
-  isInteractiveSession
+  isInteractiveSession,
+  formatVersionDiffHint,
+  promptToRunCli
 } = require("../lib/versionUpdate");
+const { parseCliOptions } = require("../lib/cliOptions");
 
 const COMMAND_NOT_FOUND_EXIT_CODE = 1;
 const PACKAGE_NOT_FOUND_EXIT_CODE = 2;
@@ -43,36 +47,6 @@ async function printHelp() {
   } else {
     console.log(helpText);
   }
-}
-
-function parseArgs(argv) {
-  const flags = new Set();
-  let commandName = null;
-  let versionLength = 6;
-
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === "--version-length" || arg === "-l") {
-      const nextArg = argv[i + 1];
-      if (nextArg && !nextArg.startsWith("-")) {
-        versionLength = parseInt(nextArg, 10) || 6;
-        i++;
-      }
-    } else if (arg.startsWith("-")) {
-      flags.add(arg);
-    } else if (!commandName) {
-      commandName = arg;
-    }
-  }
-
-  return {
-    commandName,
-    help: flags.has("--help") || flags.has("-h"),
-    version: flags.has("--version") || flags.has("-v"),
-    update: flags.has("--update") || flags.has("-u"),
-    open: flags.has("--open") || flags.has("-o"),
-    versionLength
-  };
 }
 
 async function resolvePackageInfo(commandName) {
@@ -110,21 +84,42 @@ async function showVersionInfo(commandName, options = {}) {
       console.log(t("loadingOnline"));
     }
   });
-  console.log(formatVersionOutput(packageName, localVersion, onlineVersions, options.showOnline));
-  return { packageName, onlineVersions };
+
+  const latestVersion = onlineVersions[0];
+  const diffHint = latestVersion ? formatVersionDiffHint(localVersion, latestVersion) : null;
+
+  if (options.update && diffHint && diffHint.isLatest) {
+    console.log(`${t("currentVersion")}: ${packageName}@${localVersion}`);
+    console.log(`\n${diffHint.emoji} ${diffHint.text}`);
+    return { packageName, onlineVersions, diffHint, localVersion, latestVersion, skipUpdate: true };
+  }
+
+  const output = formatVersionOutput(packageName, localVersion, onlineVersions, {
+    showOnline: options.showOnline
+  });
+  console.log(output);
+
+  return { packageName, onlineVersions, diffHint, localVersion, latestVersion, skipUpdate: false };
 }
 
 async function run() {
-  const { commandName, help, version, update, open, versionLength } = parseArgs(
+  const { commandName, help, version, update, open, versionLength } = parseCliOptions(
     process.argv.slice(2)
   );
 
   if (version || update) {
-    const { packageName, onlineVersions } = await showVersionInfo(commandName, {
-      versionLength,
-      showOnline: !update
-    });
+    const { packageName, onlineVersions, diffHint, localVersion, latestVersion, skipUpdate } = await showVersionInfo(
+      commandName,
+      {
+        versionLength,
+        showOnline: true
+      }
+    );
     if (update) {
+      if (skipUpdate) {
+        return;
+      }
+
       const targetVersion = await chooseTargetVersion(packageName, onlineVersions);
       if (!targetVersion) {
         console.log(t("updateCanceled"));
@@ -134,6 +129,23 @@ async function run() {
         console.log(t("updating"));
         await runGlobalUpdate(packageName, targetVersion);
         console.log(t("updateCompleted"));
+
+        const shouldRunCli = await promptToRunCli();
+        if (shouldRunCli && commandName) {
+          try {
+            const resolvedPath = await which(commandName);
+            const { spawn } = require("child_process");
+            const child = spawn(resolvedPath, [], {
+              stdio: "inherit",
+              shell: true
+            });
+            child.on("error", (error) => {
+              console.error(`Failed to run ${commandName}: ${error.message}`);
+            });
+          } catch (error) {
+            console.error(`Command not found: ${commandName}`);
+          }
+        }
       } catch (error) {
         console.error(t("updateFailed"));
         if (typeof error.exitCode === "number") {

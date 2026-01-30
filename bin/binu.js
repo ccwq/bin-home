@@ -3,6 +3,7 @@ const path = require("path");
 
 const { isInteractiveSession } = require("../lib/versionUpdate");
 const { t } = require("../lib/i18n");
+const { parseCliOptions } = require("../lib/cliOptions");
 
 async function printBinuHelp() {
   const helpText = [
@@ -31,24 +32,22 @@ async function printBinuHelp() {
 }
 
 async function run() {
-  const args = process.argv.slice(2);
-  const showHelp =
-    args.length === 0 || args.includes("--help") || args.includes("-h");
+  const { commandName, help, versionLength } = parseCliOptions(process.argv.slice(2), true);
 
-  if (showHelp) {
+  if (help || !commandName) {
     await printBinuHelp();
     process.exit(0);
   }
 
-  const hasUpdateFlag = args.includes("--update") || args.includes("-u");
   const cliPath = path.join(__dirname, "cli.js");
 
-  // Ensure binu behaves like binu-home <command> --update.
   process.argv = [
     process.argv[0],
     cliPath,
-    ...args,
-    ...(hasUpdateFlag ? [] : ["--update"])
+    commandName,
+    "--update",
+    "-l",
+    String(versionLength)
   ];
 
   require("./cli");
