@@ -1,6 +1,6 @@
 {
   "name": "bin-home",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Find which global npm package provides a CLI command",
   "author": "ccwq",
   "license": "MIT",
