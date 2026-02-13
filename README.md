@@ -92,6 +92,50 @@ bin-home codex --open
 - `--update`, `-u`: Update to specified version
 - `-l, --version-length <n>`: Limit online version list length (default: 6)
 
+### Debug Logs
+
+Set `BIN_HOME_DEBUG=1` to print internal diagnostics to stderr with prefix
+`[bin-home:debug]`.
+
+These logs are useful for troubleshooting update/version mismatches, especially
+in mixed environments (for example npm global + Volta).
+
+Common scopes:
+
+- `packageFinder`: package resolution source and selected path
+- `version`: local/online version resolution and mismatch checks
+- `volta`: Volta detection details
+- `update`: selected update strategy (`npm` or `volta`)
+- `verify`: runtime command path/version probes before and after update
+
+Examples:
+
+```bash
+# Linux/macOS
+BIN_HOME_DEBUG=1 node ./bin/binu.js iflow
+
+# Windows PowerShell
+$env:BIN_HOME_DEBUG = "1"
+node .\bin\binu.js iflow
+```
+
+### Troubleshooting Flow
+
+When update behavior is not as expected, use this quick checklist with debug logs:
+
+1. Check command routing
+   - Look at `packageFinder.command resolution context`
+   - Confirm `commandPath` matches the command you actually run
+2. Check package source
+   - Look for `preferred volta package for command` or npm match logs
+   - Verify the selected package/version is what you expect
+3. Check update strategy
+   - Look at `update.selected update strategy`
+   - Ensure strategy is `volta` when command is Volta-managed
+4. Check runtime verification
+   - Compare `verify.runtime version probe result` with expected target version
+   - If mismatch remains, run `where <command>` / `volta list <command>` manually
+
 ## Publishing
 
 To publish to npm and GitHub:
@@ -169,6 +213,49 @@ binu codex
 - `--open`, `-o`: 打开 npm 包页面
 - `--update`, `-u`: 更新到指定版本
 - `-l, --version-length <n>`: 限制显示的线上版本数量 (默认: 6)
+
+### 调试日志
+
+设置 `BIN_HOME_DEBUG=1` 后，工具会向 stderr 输出内部诊断日志，前缀为
+`[bin-home:debug]`。
+
+这类日志可用于排查版本/更新链路问题，尤其是 npm 全局与 Volta 混用场景。
+
+常见日志范围：
+
+- `packageFinder`: 包解析来源与命中路径
+- `version`: 本地/线上版本解析与不一致检测
+- `volta`: Volta 识别细节
+- `update`: 更新策略选择（`npm` 或 `volta`）
+- `verify`: 更新前后运行态命令路径与版本探测
+
+示例：
+
+```bash
+# Linux/macOS
+BIN_HOME_DEBUG=1 node ./bin/binu.js iflow
+
+# Windows PowerShell
+$env:BIN_HOME_DEBUG = "1"
+node .\bin\binu.js iflow
+```
+
+### 排障流程
+
+当更新行为与预期不一致时，可按下面步骤结合调试日志快速定位：
+
+1. 先看命令路由
+   - 查看 `packageFinder.command resolution context`
+   - 确认 `commandPath` 与你实际执行的命令一致
+2. 再看包解析来源
+   - 关注 `preferred volta package for command` 或 npm 命中日志
+   - 确认最终使用的包与版本符合预期
+3. 再看更新策略
+   - 查看 `update.selected update strategy`
+   - 若命令由 Volta 管理，应为 `volta`
+4. 最后看运行态校验
+   - 对比 `verify.runtime version probe result` 与目标版本
+   - 如仍不一致，手动执行 `where <命令>` / `volta list <命令>` 交叉确认
 
 ## 发布说明
 

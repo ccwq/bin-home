@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 const path = require("path");
+const { spawn } = require("child_process");
 const which = require("which");
 const validateCommand = require("../lib/commandValidator");
 const findPackageForCommand = require("../lib/packageFinder");
 const displayPackageInfo = require("../lib/packageInfoFormatter");
+const { debugLog } = require("../lib/debug");
 const { t } = require("../lib/i18n");
 const {
   fetchOnlineVersions,
@@ -79,6 +81,29 @@ async function resolvePackageInfo(commandName) {
 
 async function showVersionInfo(commandName, options = {}) {
   const { packageName, localVersion } = await resolvePackageInfo(commandName);
+  const runtimeVersionBeforeUpdate = await readRuntimeCommandVersion(commandName);
+  const runtimeVersionNormalized = runtimeVersionBeforeUpdate
+    ? runtimeVersionBeforeUpdate.replace(/^v/, "")
+    : null;
+  const localVersionNormalized = localVersion ? String(localVersion).replace(/^v/, "") : null;
+  const hasRuntimeMismatch =
+    Boolean(runtimeVersionNormalized) &&
+    Boolean(localVersionNormalized) &&
+    runtimeVersionNormalized !== localVersionNormalized;
+  debugLog("version", "resolved local package version", {
+    commandName: commandName || null,
+    packageName,
+    localVersion,
+    runtimeVersion: runtimeVersionBeforeUpdate,
+    hasRuntimeMismatch,
+    update: options.update === true
+  });
+
+  if (hasRuntimeMismatch) {
+    console.warn(
+      `Warning: runtime '${commandName} --version' is '${runtimeVersionBeforeUpdate}', but resolved package version is '${localVersion}'.`
+    );
+  }
   const onlineVersions = await fetchOnlineVersions(packageName, {
     limit: options.versionLength || 6,
     onLoading: () => {
@@ -88,6 +113,11 @@ async function showVersionInfo(commandName, options = {}) {
 
   const latestVersion = onlineVersions[0];
   const diffHint = latestVersion ? formatVersionDiffHint(localVersion, latestVersion) : null;
+  debugLog("version", "resolved online versions", {
+    packageName,
+    latestVersion: latestVersion || null,
+    versionCount: onlineVersions.length
+  });
 
   if (options.update && diffHint && diffHint.isLatest) {
     console.log(`${t("currentVersion")}: ${packageName}@${localVersion}`);
@@ -103,6 +133,87 @@ async function showVersionInfo(commandName, options = {}) {
   return { packageName, onlineVersions, diffHint, localVersion, latestVersion, skipUpdate: false };
 }
 
+function runCommandVersionCheck(commandPath) {
+  return new Promise((resolve) => {
+    let child;
+    try {
+      if (process.platform === "win32") {
+        const cmd = process.env.ComSpec || "cmd.exe";
+        child = spawn(cmd, ["/d", "/s", "/c", `"${commandPath}" --version`], {
+          windowsHide: true,
+          shell: false
+        });
+      } else {
+        child = spawn(commandPath, ["--version"], {
+          windowsHide: true,
+          shell: false
+        });
+      }
+    } catch (error) {
+      debugLog("verify", "runtime version probe spawn failed", {
+        commandPath,
+        reason: error.message
+      });
+      resolve(null);
+      return;
+    }
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("error", () => {
+      resolve(null);
+    });
+    child.on("close", (code) => {
+      if (code !== 0) {
+        resolve(null);
+        return;
+      }
+      const text = (stdout || stderr).trim();
+      if (!text) {
+        resolve(null);
+        return;
+      }
+      const firstLine = text.split(/\r?\n/)[0].trim();
+      resolve(firstLine || null);
+    });
+  });
+}
+
+async function readRuntimeCommandVersion(commandName) {
+  if (!commandName) {
+    return null;
+  }
+
+  let resolvedPath;
+  try {
+    resolvedPath = await which(commandName);
+  } catch (error) {
+    debugLog("verify", "which failed before runtime version check", {
+      commandName,
+      reason: error.message
+    });
+    return null;
+  }
+
+  debugLog("verify", "resolved command path", {
+    commandName,
+    resolvedPath
+  });
+
+  const runtimeVersion = await runCommandVersionCheck(resolvedPath);
+  debugLog("verify", "runtime version probe result", {
+    commandName,
+    runtimeVersion
+  });
+  return runtimeVersion;
+}
+
 async function run() {
   const { commandName, help, version, update, open, versionLength } = parseCliOptions(
     process.argv.slice(2)
@@ -113,7 +224,8 @@ async function run() {
       commandName,
       {
         versionLength,
-        showOnline: true
+        showOnline: true,
+        update
       }
     );
     if (update) {
@@ -128,15 +240,43 @@ async function run() {
       }
       try {
         const useVolta = await isVoltaManagedCommand(commandName);
+        debugLog("update", "computed update context", {
+          commandName,
+          packageName,
+          currentVersion: localVersion,
+          latestVersion: latestVersion || null,
+          targetVersion,
+          useVolta
+        });
         console.log(t("updating"));
         await runGlobalUpdate(packageName, targetVersion, { useVolta });
         console.log(t("updateCompleted"));
+
+        const runtimeVersion = await readRuntimeCommandVersion(commandName);
+        if (runtimeVersion) {
+          const normalizedRuntimeVersion = runtimeVersion.replace(/^v/, "");
+          const expectedVersion = targetVersion === "latest" ? latestVersion : targetVersion;
+          const normalizedExpectedVersion = String(expectedVersion || "").replace(/^v/, "");
+          const matchesTarget =
+            !normalizedExpectedVersion || normalizedRuntimeVersion === normalizedExpectedVersion;
+          debugLog("verify", "post-update runtime verification", {
+            commandName,
+            runtimeVersion,
+            targetVersion,
+            expectedVersion,
+            matchesTarget
+          });
+          if (!matchesTarget) {
+            console.warn(
+              `Warning: runtime '${commandName} --version' is '${runtimeVersion}', expected '${expectedVersion}'.`
+            );
+          }
+        }
 
         const shouldRunCli = await promptToRunCli();
         if (shouldRunCli && commandName) {
           try {
             const resolvedPath = await which(commandName);
-            const { spawn } = require("child_process");
             const child = spawn(resolvedPath, [], {
               stdio: "inherit",
               shell: true

@@ -1,5 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const os = require("node:os");
+const path = require("node:path");
 
 const {
   fetchOnlineVersions,
@@ -22,6 +24,14 @@ function createExecStub({ stdout = "", error = null, onCommand } = {}) {
     }
     callback(error, stdout, "");
   };
+}
+
+function getVoltaBaseDir() {
+  if (process.platform === "win32") {
+    const userHome = process.env.USERPROFILE || os.homedir();
+    return path.join(userHome, "AppData", "Local", "Volta");
+  }
+  return path.join(os.homedir(), ".volta");
 }
 
 test("fetchOnlineVersions returns newest 6 versions", async () => {
@@ -88,16 +98,39 @@ test("runGlobalUpdate uses volta install when requested", async () => {
 });
 
 test("isVoltaManagedCommand returns true for volta bin path", async () => {
+  const voltaBaseDir = getVoltaBaseDir();
+  const iflowPath = process.platform === "win32"
+    ? path.join(voltaBaseDir, "bin", "iflow.cmd")
+    : path.join(voltaBaseDir, "bin", "iflow");
   const whichFn = async () =>
-    "C:\\Users\\Administrator\\AppData\\Local\\Volta\\bin\\iflow.cmd";
-  const result = await isVoltaManagedCommand("iflow", { whichFn });
+    iflowPath;
+  const voltaWhichFn = async () =>
+    iflowPath;
+  const result = await isVoltaManagedCommand("iflow", { whichFn, voltaWhichFn });
   assert.equal(result, true);
 });
 
 test("isVoltaManagedCommand returns false for non-volta path", async () => {
-  const whichFn = async () => "C:\\Program Files\\nodejs\\iflow.cmd";
-  const result = await isVoltaManagedCommand("iflow", { whichFn });
+  const nonVoltaPath = process.platform === "win32"
+    ? path.join("C:\\", "Program Files", "nodejs", "iflow.cmd")
+    : path.join("/usr", "local", "bin", "iflow");
+  const whichFn = async () => nonVoltaPath;
+  const voltaWhichFn = async () => null;
+  const result = await isVoltaManagedCommand("iflow", { whichFn, voltaWhichFn });
   assert.equal(result, false);
+});
+
+test("isVoltaManagedCommand returns true for Volta tools path", async () => {
+  const voltaBaseDir = getVoltaBaseDir();
+  const toolPath = process.platform === "win32"
+    ? path.join(voltaBaseDir, "tools", "image", "node", "24.11.0", "iflow.CMD")
+    : path.join(voltaBaseDir, "tools", "image", "node", "24.11.0", "iflow");
+  const whichFn = async () =>
+    toolPath;
+  const voltaWhichFn = async () =>
+    toolPath;
+  const result = await isVoltaManagedCommand("iflow", { whichFn, voltaWhichFn });
+  assert.equal(result, true);
 });
 
 test("fetchOnlineVersions triggers loading callback when fetching npm", async () => {
