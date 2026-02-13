@@ -10,6 +10,7 @@ const {
   formatVersionOutput,
   chooseTargetVersion,
   runGlobalUpdate,
+  isVoltaManagedCommand,
   isInteractiveSession,
   formatVersionDiffHint,
   promptToRunCli
@@ -126,8 +127,9 @@ async function run() {
         return;
       }
       try {
+        const useVolta = await isVoltaManagedCommand(commandName);
         console.log(t("updating"));
-        await runGlobalUpdate(packageName, targetVersion);
+        await runGlobalUpdate(packageName, targetVersion, { useVolta });
         console.log(t("updateCompleted"));
 
         const shouldRunCli = await promptToRunCli();

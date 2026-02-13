@@ -6,6 +6,7 @@ const {
   formatVersionOutput,
   chooseTargetVersion,
   runGlobalUpdate,
+  isVoltaManagedCommand,
   parseVersion,
   compareVersions,
   formatVersionDiffHint,
@@ -72,6 +73,31 @@ test("runGlobalUpdate uses npm command with package and version", async () => {
 
   await runGlobalUpdate("@demo/pkg", "1.2.3", { execFn });
   assert.match(captured, /npm(.cmd)? i -g @demo\/pkg@1.2.3/);
+});
+
+test("runGlobalUpdate uses volta install when requested", async () => {
+  let captured = null;
+  const execFn = createExecStub({
+    onCommand: (command) => {
+      captured = command;
+    }
+  });
+
+  await runGlobalUpdate("@demo/pkg", "1.2.3", { execFn, useVolta: true });
+  assert.match(captured, /volta(.cmd)? install @demo\/pkg@1.2.3/);
+});
+
+test("isVoltaManagedCommand returns true for volta bin path", async () => {
+  const whichFn = async () =>
+    "C:\\Users\\Administrator\\AppData\\Local\\Volta\\bin\\iflow.cmd";
+  const result = await isVoltaManagedCommand("iflow", { whichFn });
+  assert.equal(result, true);
+});
+
+test("isVoltaManagedCommand returns false for non-volta path", async () => {
+  const whichFn = async () => "C:\\Program Files\\nodejs\\iflow.cmd";
+  const result = await isVoltaManagedCommand("iflow", { whichFn });
+  assert.equal(result, false);
 });
 
 test("fetchOnlineVersions triggers loading callback when fetching npm", async () => {
